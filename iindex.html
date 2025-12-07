@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Encoding vs Hashing vs Encryption | JWT</title>
+    <style>
+        /* --- IMPORTS & VARS --- */
+        @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Patrick+Hand&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+
+        :root {
+            --bg: #f4f3ef; /* Off-white paper */
+            --ink: #1a1a1a;
+            --bauhaus-red: #ff3b30;
+            --bauhaus-blue: #007aff;
+            --bauhaus-yellow: #ffcc00;
+            --shadow: 6px 6px 0px var(--ink);
+            --border: 3px solid var(--ink);
+            --radius-sketch: 255px 15px 225px 15px / 15px 225px 15px 255px; /* Irregular border */
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--ink);
+            font-family: 'Space Mono', monospace;
+            overflow: hidden; /* Slide container handles scroll */
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- TYPOGRAPHY --- */
+        h1, h2, h3 {
+            font-family: 'Archivo Black', sans-serif;
+            text-transform: uppercase;
+            line-height: 1;
+        }
+
+        h1 { font-size: 3rem; margin-bottom: 20px; }
+        h2 { font-size: 2.5rem; margin-bottom: 15px; color: var(--ink); }
+        
+        p, li {
+            font-family: 'Patrick Hand', cursive; /* Sketchy font for notes */
+            font-size: 1.5rem;
+            line-height: 1.4;
+        }
+
+        code {
+            font-family: 'Space Mono', monospace;
+            background: #eee;
+            padding: 2px 5px;
+            font-size: 1rem;
+        }
+
+        /* --- LAYOUT & SLIDES --- */
+        .controls {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            z-index: 100;
+            display: flex;
+            gap: 15px;
+        }
+
+        .btn {
+            background: white;
+            border: var(--border);
+            padding: 15px 30px;
+            font-weight: bold;
+            font-family: 'Archivo Black', sans-serif;
+            cursor: pointer;
+            box-shadow: var(--shadow);
+            transition: transform 0.1s, box-shadow 0.1s;
+            font-size: 1.2rem;
+        }
+
+        .btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px var(--ink);
+        }
+
+        .btn-red { background-color: var(--bauhaus-red); color: white; }
+        .btn-blue { background-color: var(--bauhaus-blue); color: white; }
+
+        .slides-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        .slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-image: radial-gradient(#ccc 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        .slide.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* --- COMPONENT STYLES (Bauhaus/Brutalist) --- */
+        .card {
+            background: white;
+            border: var(--border);
+            padding: 30px;
+            box-shadow: var(--shadow);
+            max-width: 900px;
+            width: 90%;
+            position: relative;
+            z-index: 2;
+        }
+
+        .card.sketchy {
+            border-radius: var(--radius-sketch);
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 5px 10px;
+            color: white;
+            font-weight: bold;
+            border: 3px solid black;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+            box-shadow: 3px 3px 0px black;
+        }
+        .tag-enc { background: var(--bauhaus-blue); }
+        .tag-hash { background: var(--bauhaus-red); }
+        .tag-crypt { background: var(--bauhaus-yellow); color: black; }
+
+        .code-block {
+            background: #1a1a1a;
+            color: #00ff00;
+            padding: 15px;
+            border: 3px solid black;
+            margin: 15px 0;
+            font-family: 'Space Mono', monospace;
+            font-size: 0.9rem;
+            position: relative;
+        }
+        .code-block::before {
+            content: 'TERMINAL';
+            position: absolute;
+            top: -10px;
+            left: 10px;
+            background: white;
+            color: black;
+            border: 2px solid black;
+            padding: 0 5px;
+            font-size: 0.7rem;
+            font-weight: bold;
+        }
+
+        .arrow-down {
+            font-size: 3rem;
+            color: var(--ink);
+            margin: 10px 0;
+            font-weight: bold;
+            transform: rotate(90deg);
+        }
+
+        /* --- DECORATIVE SHAPES --- */
+        .shape {
+            position: absolute;
+            z-index: 1;
+            border: var(--border);
+        }
+        .circle { border-radius: 50%; }
+        .triangle {
+            width: 0; height: 0;
+            border-left: 50px solid transparent;
+            border-right: 50px solid transparent;
+            border-bottom: 100px solid var(--bauhaus-yellow);
+            border-top: none;
+            background: transparent;
+        }
+
+        /* --- SPECIFIC VISUALIZATIONS --- */
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .comp-col {
+            border: var(--border);
+            padding: 15px;
+            background: white;
+        }
+
+        .jwt-segment {
+            display: inline-block;
+            padding: 5px;
+            border: 2px solid black;
+            margin: 2px;
+            font-weight: bold;
+        }
+
+        .flow-diagram {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 30px;
+            font-family: 'Patrick Hand', cursive;
+        }
+        .flow-node {
+            border: 3px solid black;
+            padding: 15px;
+            background: white;
+            border-radius: 50% 20% / 10% 40%;
+            text-align: center;
+        }
+
+        /* --- ANIMATIONS --- */
+        @keyframes drift {
+            0% { transform: translate(0,0); }
+            50% { transform: translate(5px, -5px); }
+            100% { transform: translate(0,0); }
+        }
+        .float { animation: drift 3s infinite ease-in-out; }
+
+    </style>
+</head>
+<body>
+
+    <div class="shape circle" style="top: -50px; left: -50px; width: 200px; height: 200px; background: var(--bauhaus-red);"></div>
+    <div class="shape" style="bottom: 50px; left: 50px; width: 100px; height: 100px; background: var(--bauhaus-blue); transform: rotate(15deg);"></div>
+    <div class="shape circle" style="top: 50%; right: -50px; width: 300px; height: 300px; border: 5px solid var(--ink); background: transparent;"></div>
+
+    <div class="slides-container">
+
+        <div class="slide active" id="slide-1">
+            <div class="card sketchy" style="text-align: center;">
+                <h1 style="font-size: 4rem;">Data<br><span style="color: var(--bauhaus-blue)">Security</span><br>Concepts</h1>
+                <p>Based on your notes: Encoding, Hashing, Encryption & JWT</p>
+                <div style="margin-top: 30px; font-family: 'Patrick Hand'; font-size: 1.2rem; color: #666;">
+                    (Press Next or Arrow Keys)
+                </div>
+            </div>
+        </div>
+
+        <div class="slide" id="slide-2">
+            <span class="tag tag-enc">Concept 01</span>
+            <div class="card sketchy">
+                <h2>Encoding</h2>
+                <p><strong>Definition:</strong> Transforming data from one format to another so it can be safely consumed by a different system.</p>
+                
+                <div style="display: flex; align-items: center; justify-content: space-around; margin: 20px 0;">
+                    <div style="text-align: center;">
+                        <div class="flow-node">Binary/Text</div>
+                        <small>Raw Data</small>
+                    </div>
+                    <div class="arrow-down" style="transform: rotate(-0deg);">➜</div>
+                    <div style="text-align: center;">
+                        <div class="flow-node" style="border-radius: 0;">BASE64 Algo</div>
+                        <small>Public Scheme</small>
+                    </div>
+                    <div class="arrow-down" style="transform: rotate(-0deg);" ">➜</div>
+                    <div style="text-align: center;">
+                        <div class="flow-node">Safe String</div>
+                        <small>Transport Ready</small>
+                    </div>
+                </div>
+
+                <div class="code-block">
+                    // JavaScript Example<br>
+                    const data = "Hello World";<br>
+                    const encoded = btoa(data); // "SGVsbG8gV29ybGQ="<br>
+                    const decoded = atob(encoded); // "Hello World"
+                </div>
+
+                <ul style="list-style-type: square; padding-left: 20px; font-size: 1.2rem;">
+                    <li><span style="background:var(--bauhaus-yellow)">Reversible:</span> Yes, easily. No key needed.</li>
+                    <li><span style="background:var(--bauhaus-yellow)">Purpose:</span> Usability (e.g., URL params), not secrecy.</li>
+                    <li><strong>Examples:</strong> Base64, Hex, ASCII, UTF-8.</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="slide" id="slide-3">
+            <span class="tag tag-hash">Concept 02</span>
+            <div class="card">
+                <h2>Hashing</h2>
+                <p><strong>The "Meat Grinder":</strong> Taking input of <em>any</em> size and turning it into a fixed-length string.</p>
+
+                <div style="background: #eee; padding: 20px; border: 3px dashed black; margin: 15px 0; text-align: center;">
+                    <span style="font-size: 2rem;">🐷</span> Raw Data 
+                    <br>⬇️<br>
+                    <strong>HASH FUNCTION (SHA-256)</strong>
+                    <br>⬇️<br>
+                    <span style="font-family: 'Space Mono'; word-break: break-all; background: white; padding: 5px; border: 2px solid black;">5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8</span>
+                </div>
+
+                <div class="code-block">
+                    // It is Deterministic<br>
+                    hash("password123") === hash("password123") // ALWAYS TRUE<br>
+                    hash("password123") === "original_text" // IMPOSSIBLE (One-way)
+                </div>
+
+                <ul style="list-style-type: square; padding-left: 20px;">
+                    <li><span style="background:var(--bauhaus-red); color: white">Irreversible:</span> You cannot get the steak back from the burger.</li>
+                    <li><strong>Use Case:</strong> Storing passwords, Checksums, Data Integrity.</li>
+                    <li><strong>Examples:</strong> SHA-256, Bcrypt, MD5 (Old).</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="slide" id="slide-4">
+            <span class="tag tag-crypt">Concept 03</span>
+            <div class="card sketchy">
+                <h2>Encryption</h2>
+                <p><strong>The "Lock & Key":</strong> Scrambling data so only those with the specific key can read it.</p>
+
+                <div style="display:flex; gap:10px; margin: 20px 0; align-items:center;">
+                    <div style="flex:1; border:2px solid black; padding:10px;">
+                        Hello!<br>
+                        (Plaintext)
+                    </div>
+                    <div style="font-size:2rem;">+</div>
+                    <div style="border:2px solid black; padding:10px; background: var(--bauhaus-yellow);">
+                        🔑 KEY
+                    </div>
+                    <div style="font-size:2rem;">=</div>
+                    <div style="flex:1; border:2px solid black; padding:10px; background: #333; color: white;">
+                        Xy9#mZ!<br>
+                        (Ciphertext)
+                    </div>
+                </div>
+
+                <div class="code-block">
+                    // Symmetric (Same Key)<br>
+                    AES.encrypt("Secret", "myKey") -> "Gibberish"<br>
+                    AES.decrypt("Gibberish", "myKey") -> "Secret"<br><br>
+                    // Asymmetric (Public/Private)<br>
+                    RSA, PGP
+                </div>
+
+                <p><strong>Purpose:</strong> Confidentiality. Two-way (if you have the key).</p>
+            </div>
+        </div>
+
+        <div class="slide" id="slide-5">
+            <div class="card" style="max-width: 1000px;">
+                <h2>The Big Differences</h2>
+                <div class="comparison-grid">
+                    <div class="comp-col">
+                        <h3 style="color: var(--bauhaus-blue)">Encoding</h3>
+                        <hr style="border: 2px solid black; margin: 10px 0;">
+                        <p><strong>Goal:</strong> Format Data</p>
+                        <p><strong>Reversible?</strong> Yes</p>
+                        <p><strong>Key?</strong> No</p>
+                        <p><strong>Ex:</strong> Base64</p>
+                    </div>
+                    <div class="comp-col">
+                        <h3 style="color: var(--bauhaus-red)">Hashing</h3>
+                        <hr style="border: 2px solid black; margin: 10px 0;">
+                        <p><strong>Goal:</strong> Integrity / ID</p>
+                        <p><strong>Reversible?</strong> No</p>
+                        <p><strong>Key?</strong> No (usually)</p>
+                        <p><strong>Ex:</strong> SHA-256</p>
+                    </div>
+                    <div class="comp-col">
+                        <h3 style="color: #eda800">Encryption</h3>
+                        <hr style="border: 2px solid black; margin: 10px 0;">
+                        <p><strong>Goal:</strong> Secrecy</p>
+                        <p><strong>Reversible?</strong> Yes (with key)</p>
+                        <p><strong>Key?</strong> Yes</p>
+                        <p><strong>Ex:</strong> AES, RSA</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="slide" id="slide-6">
+            <div class="card sketchy">
+                <h2 style="font-size: 4rem;">J.W.T.</h2>
+                <h3 style="background: black; color: white; display: inline-block; padding: 5px;">JSON Web Token</h3>
+                <br><br>
+                <p>It's a way to securely transmit information between parties as a JSON object.</p>
+                <p>It acts like a <strong>Digital Passport</strong>. The server stamps it, hands it to you, and you show it every time you want to enter a restricted area (API).</p>
+                <p><em>It uses Encoding AND Hashing/Encryption!</em></p>
+            </div>
+        </div>
+
+        <div class="slide" id="slide-7">
+            <div class="card">
+                <h2>The Structure</h2>
+                <p>A JWT is just a long string separated by dots:</p>
+                <div style="font-size: 1.5rem; margin: 20px 0; word-break: break-all; font-family: 'Space Mono';">
+                    <span style="color: var(--bauhaus-red);">eyJhbGciOiJIUzI1NiJ9</span>.<span style="color: var(--bauhaus-blue);">eyJ1c2VyIjoiS2F2aSIsImFkbWluIjp0cnVlfQ</span>.<span style="color: #eda800;">SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c</span>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                    <div class="comp-col" style="border-color: var(--bauhaus-red); border-width: 4px;">
+                        <h3 style="color: var(--bauhaus-red)">1. Header</h3>
+                        <p class="code-block" style="background:white; color:black; border:none; padding:0;">
+                            {<br>
+                              "alg": "HS256",<br>
+                              "typ": "JWT"<br>
+                            }
+                        </p>
+                        <small>Algorithm & Token Type (Base64 Encoded)</small>
+                    </div>
+                    <div class="comp-col" style="border-color: var(--bauhaus-blue); border-width: 4px;">
+                        <h3 style="color: var(--bauhaus-blue)">2. Payload</h3>
+                        <p class="code-block" style="background:white; color:black; border:none; padding:0;">
+                            {<br>
+                              "id": "01",<br>
+                              "name": "Kavi"<br>
+                            }
+                        </p>
+                        <small>Data/Claims (Base64 Encoded)</small>
+                    </div>
+                    <div class="comp-col" style="border-color: #eda800; border-width: 4px;">
+                        <h3 style="color: #eda800">3. Signature</h3>
+                        <p style="font-size: 0.8rem;">
+                            HMACSHA256(<br>
+                              base64(Header) + "." +<br>
+                              base64(Payload),<br>
+                              <strong>SECRET_KEY</strong><br>
+                            )
+                        </p>
+                        <small>Verifies the token hasn't been tampered with.</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="slide" id="slide-8">
+            <div class="card sketchy" style="width: 100%;">
+                <h2>The Authentication Flow</h2>
+                <div class="flow-diagram" style="flex-wrap: wrap; gap: 20px; justify-content: center;">
+                    
+                    <div style="width: 200px;">
+                        <div class="flow-node float">
+                            <strong>USER</strong><br>
+                            Login Form
+                        </div>
+                        <div class="arrow-down">⬇️</div>
+                        <p style="font-size:1rem;">1. POST /login<br>(ID/Pass)</p>
+                    </div>
+
+                    <div style="width: 200px;">
+                        <div class="flow-node" style="border-radius: 0; background: #eee;">
+                            <strong>SERVER</strong>
+                        </div>
+                        <div class="arrow-down">⬇️</div>
+                        <p style="font-size:1rem;">2. Check DB<br>3. Create JWT (Sign with Secret)</p>
+                    </div>
+
+                    <div style="width: 200px;">
+                        <div class="flow-node float" style="border-color: var(--bauhaus-blue);">
+                            <strong>BROWSER</strong>
+                        </div>
+                        <div class="arrow-down">⬆️</div>
+                        <p style="font-size:1rem;">4. Store JWT<br>(LocalStorage/Cookie)</p>
+                    </div>
+                    
+                </div>
+                <hr style="border: 2px dashed black; margin: 20px 0;">
+                <p><strong>Next Request:</strong> Browser sends <code style="background: var(--bauhaus-yellow)">Authorization: Bearer [JWT]</code> header. Server verifies signature. If valid, grants access!</p>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="controls">
+        <button class="btn btn-blue" onclick="prevSlide()">PREV</button>
+        <button class="btn btn-red" onclick="nextSlide()">NEXT</button>
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+
+        function showSlide(index) {
+            slides.forEach((slide, i) => {
+                slide.classList.remove('active');
+                if (i === index) {
+                    slide.classList.add('active');
+                }
+            });
+        }
+
+        function nextSlide() {
+            if (currentSlide < totalSlides - 1) {
+                currentSlide++;
+                showSlide(currentSlide);
+            }
+        }
+
+        function prevSlide() {
+            if (currentSlide > 0) {
+                currentSlide--;
+                showSlide(currentSlide);
+            }
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') {
+                nextSlide();
+            } else if (e.key === 'ArrowLeft') {
+                prevSlide();
+            }
+        });
+    </script>
+</body>
+</html>
